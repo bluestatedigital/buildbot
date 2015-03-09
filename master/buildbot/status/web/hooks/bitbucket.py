@@ -29,7 +29,7 @@ def getChanges(request, options=None):
     """Catch a POST request from BitBucket and start a build process
 
     Check the URL below if you require more information about payload
-    https://confluence.atlassian.com/display/BITBUCKET/POST+Service+Management
+    https://confluence.atlassian.com/display/BITBUCKET/POST+hook+management
 
     :param request: the http request Twisted object
     :param options: additional options
