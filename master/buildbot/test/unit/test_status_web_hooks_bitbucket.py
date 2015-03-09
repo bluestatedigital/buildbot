@@ -267,3 +267,272 @@ class TestChangeHookConfiguredWithBitbucketChange(unittest.TestCase):
         commit = request.addedChanges[0]
 
         self.assertEqual(commit['project'], 'project-name')
+
+    @inlineCallbacks
+    def testGitWithMultipleCommits(self):
+        ## 3 commits, all on master
+        ## * 2efbe72 (HEAD, origin/master, master) 3rd commit; pushing this and the first 2 <==
+        ## * 2ebca08 2nd commit 
+        ## * 38b7a54 initial commit 
+        payload  = """{
+            "repository": {
+                "website": "",
+                "fork": false,
+                "name": "push_test",
+                "scm": "git",
+                "owner": "marcus",
+                "absolute_url": "/marcus/project-x/",
+                "slug": "push_test",
+                "is_private": true
+            },
+            "truncated": false,
+            "commits": [
+                {
+                    "node": "38b7a5407d93",
+                    "files": [
+                        {
+                            "type": "added",
+                            "file": "foo"
+                        }
+                    ],
+                    "branches": [],
+                    "raw_author": "Marcus Bertrand <marcus@somedomain.com>",
+                    "utctimestamp": "2015-03-09 11:33:42+00:00",
+                    "author": "marcus",
+                    "timestamp": "2015-03-09 12:33:42",
+                    "raw_node": "38b7a5407d93087a789ba9c318ddc979e825e2a3",
+                    "parents": [],
+                    "branch": null,
+                    "message": "initial commit\\n",
+                    "revision": null,
+                    "size": -1
+                },
+                {
+                    "node": "2ebca08692b4",
+                    "files": [
+                        {
+                            "type": "modified",
+                            "file": "foo"
+                        }
+                    ],
+                    "branches": [],
+                    "raw_author": "Marcus Bertrand <marcus@somedomain.com>",
+                    "utctimestamp": "2015-03-09 11:34:14+00:00",
+                    "author": "marcus",
+                    "timestamp": "2015-03-09 12:34:14",
+                    "raw_node": "2ebca08692b406f99cdf858539f72135c34cde43",
+                    "parents": [
+                        "38b7a5407d93"
+                    ],
+                    "branch": null,
+                    "message": "2nd commit\\n",
+                    "revision": null,
+                    "size": -1
+                },
+                {
+                    "node": "2efbe7294727",
+                    "files": [
+                        {
+                            "type": "modified",
+                            "file": "foo"
+                        }
+                    ],
+                    "raw_author": "Marcus Bertrand <marcus@somedomain.com>",
+                    "utctimestamp": "2015-03-09 11:34:31+00:00",
+                    "author": "marcus",
+                    "timestamp": "2015-03-09 12:34:31",
+                    "raw_node": "2efbe7294727a8db7a1fd1e54b14fe5a267e1175",
+                    "parents": [
+                        "2ebca08692b4"
+                    ],
+                    "branch": "master",
+                    "message": "3rd commit; pushing this and the first 2\\n",
+                    "revision": null,
+                    "size": -1
+                }
+            ],
+            "canon_url": "https://bitbucket.org",
+            "user": "marcus"
+        }"""
+
+
+        change_dict = {
+            'payload': [payload],
+            'project': ['project-name']}
+
+        request = FakeRequest(change_dict)
+        request.uri = '/change_hook/bitbucket'
+        request.method = 'POST'
+
+        yield request.test_render(self.change_hook)
+        self.assertEqual(len(request.addedChanges), 3)
+        
+        assertions = [
+            {
+                'revision': '38b7a5407d93087a789ba9c318ddc979e825e2a3',
+                'branch': 'master'},
+            {
+                'revision': '2ebca08692b406f99cdf858539f72135c34cde43',
+                'branch': 'master'},
+            {
+                'revision': '2efbe7294727a8db7a1fd1e54b14fe5a267e1175',
+                'branch': 'master'},
+        ]
+        
+        for ind in range(0, len(request.addedChanges)):
+            commit = request.addedChanges[ind]
+            assertion = assertions[ind]
+            
+            for key in assertion.keys():
+                self.assertEqual(commit[key], assertion[key])
+
+    @inlineCallbacks
+    def testGitWithMultipleCommitsOnDifferentBranches(self):
+        ## 2 new branches, branch2, branch3, pushed for the first time together
+        ## * b1d2d2c (HEAD, origin/branch3, branch3) 2nd commit on branch3 <==
+        ## * bf8ec28 1st commit on branch3
+        ## | * 5054d21 (origin/branch2, branch2) 2nd commit on branch2 <==
+        ## | * 2f12b0a 1st commit on branch2
+        ## |/  
+        ## * 8cc5191 (origin/new-branch, origin/master, new-branch, master) 2nd commit on new-branch; pushing
+        ## * f671eff 1st commit on new-branch
+        ## * 2efbe72 3rd commit; pushing this and the first 2
+        ## * 2ebca08 2nd commit
+        ## * 38b7a54 initial commit
+        payload  = """{
+            "repository": {
+                "website": "",
+                "fork": false,
+                "name": "push_test",
+                "scm": "git",
+                "owner": "marcus",
+                "absolute_url": "/marcus/project-x/",
+                "slug": "push_test",
+                "is_private": true
+            },
+            "truncated": false,
+            "commits": [
+                {
+                    "node": "2f12b0a59135",
+                    "files": [
+                        {
+                            "type": "modified",
+                            "file": "foo"
+                        }
+                    ],
+                    "branches": [],
+                    "raw_author": "Marcus Bertrand <marcus@somedomain.com>",
+                    "utctimestamp": "2015-03-09 11:41:32+00:00",
+                    "author": "marcus",
+                    "timestamp": "2015-03-09 12:41:32",
+                    "raw_node": "2f12b0a59135108f59d8181d7547ffe83a779a12",
+                    "parents": [
+                        "8cc519128142"
+                    ],
+                    "branch": null,
+                    "message": "1st commit on branch2\\n",
+                    "revision": null,
+                    "size": -1
+                },
+                {
+                    "node": "5054d2141dd9",
+                    "files": [
+                        {
+                            "type": "modified",
+                            "file": "foo"
+                        }
+                    ],
+                    "raw_author": "Marcus Bertrand <marcus@somedomain.com>",
+                    "utctimestamp": "2015-03-09 11:42:00+00:00",
+                    "author": "marcus",
+                    "timestamp": "2015-03-09 12:42:00",
+                    "raw_node": "5054d2141dd9320cecc3c7acf5910c01783bd379",
+                    "parents": [
+                        "2f12b0a59135"
+                    ],
+                    "branch": "branch2",
+                    "message": "2nd commit on branch2\\n",
+                    "revision": null,
+                    "size": -1
+                },
+                {
+                    "node": "bf8ec28661d9",
+                    "files": [
+                        {
+                            "type": "modified",
+                            "file": "foo"
+                        }
+                    ],
+                    "branches": [],
+                    "raw_author": "Marcus Bertrand <marcus@somedomain.com>",
+                    "utctimestamp": "2015-03-09 11:42:20+00:00",
+                    "author": "marcus",
+                    "timestamp": "2015-03-09 12:42:20",
+                    "raw_node": "bf8ec28661d9247e22e986fbfae30823d9a671a3",
+                    "parents": [
+                        "8cc519128142"
+                    ],
+                    "branch": null,
+                    "message": "1st commit on branch3\\n",
+                    "revision": null,
+                    "size": -1
+                },
+                {
+                    "node": "b1d2d2c8e636",
+                    "files": [
+                        {
+                            "type": "modified",
+                            "file": "foo"
+                        }
+                    ],
+                    "raw_author": "Marcus Bertrand <marcus@somedomain.com>",
+                    "utctimestamp": "2015-03-09 11:42:23+00:00",
+                    "author": "marcus",
+                    "timestamp": "2015-03-09 12:42:23",
+                    "raw_node": "b1d2d2c8e636154fe1f0e2ee1820a64c4cd2fe24",
+                    "parents": [
+                        "bf8ec28661d9"
+                    ],
+                    "branch": "branch3",
+                    "message": "2nd commit on branch3\\n",
+                    "revision": null,
+                    "size": -1
+                }
+            ],
+            "canon_url": "https://bitbucket.org",
+            "user": "marcus"
+        }"""
+
+
+        change_dict = {
+            'payload': [payload],
+            'project': ['project-name']}
+
+        request = FakeRequest(change_dict)
+        request.uri = '/change_hook/bitbucket'
+        request.method = 'POST'
+
+        yield request.test_render(self.change_hook)
+        self.assertEqual(len(request.addedChanges), 4)
+        
+        assertions = [
+            {
+                'revision': '2f12b0a59135108f59d8181d7547ffe83a779a12',
+                'branch': 'branch2'},
+            {
+                'revision': '5054d2141dd9320cecc3c7acf5910c01783bd379',
+                'branch': 'branch2'},
+            {
+                'revision': 'bf8ec28661d9247e22e986fbfae30823d9a671a3',
+                'branch': 'branch3'},
+            {
+                'revision': 'b1d2d2c8e636154fe1f0e2ee1820a64c4cd2fe24',
+                'branch': 'branch3'},
+        ]
+        
+        for ind in range(0, len(request.addedChanges)):
+            commit = request.addedChanges[ind]
+            assertion = assertions[ind]
+            
+            for key in assertion.keys():
+                self.assertEqual(commit[key], assertion[key])

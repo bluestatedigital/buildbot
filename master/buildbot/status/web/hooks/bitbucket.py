@@ -24,6 +24,70 @@ from dateutil.parser import parse as dateparse
 
 from twisted.python import log
 
+## tease out branch names from commit.  only commit on tip of branch has a
+## valid "branch" attribute. for each commit that *does* have a branch, fill
+## in the branch name on all of its parents.
+def populateBranches(commits):
+    commit_order = [ c['node'] for c in commits ]
+    commit_map = dict([ (c['node'], c) for c in commits ])
+    
+    # >>> pprint(commit_map)
+    # {u'38b7a5407d93': {u'author': u'marcus',
+    #                    u'branch': None,
+    #                    u'branches': [],
+    #                    u'files': [{u'file': u'foo', u'type': u'added'}],
+    #                    u'message': u'initial commit\n',
+    #                    u'node': u'38b7a5407d93',
+    #                    u'parents': [],
+    #                    u'raw_author': u'Marcus Bertrand <marcus@somedomain.com>',
+    #                    u'raw_node': u'38b7a5407d93087a789ba9c318ddc979e825e2a3',
+    #                    u'revision': None,
+    #                    u'size': -1,
+    #                    u'timestamp': u'2015-03-09 12:33:42',
+    #                    u'utctimestamp': u'2015-03-09 11:33:42+00:00'},
+    # u'2ebca08692b4': {u'author': u'marcus',
+    #                    u'branch': None,
+    #                    u'branches': [],
+    #                    u'files': [{u'file': u'foo', u'type': u'modified'}],
+    #                    u'message': u'2nd commit\n',
+    #                    u'node': u'2ebca08692b4',
+    #                    u'parents': [u'38b7a5407d93'],
+    #                    u'raw_author': u'Marcus Bertrand <marcus@somedomain.com>',
+    #                    u'raw_node': u'2ebca08692b406f99cdf858539f72135c34cde43',
+    #                    u'revision': None,
+    #                    u'size': -1,
+    #                    u'timestamp': u'2015-03-09 12:34:14',
+    #                    u'utctimestamp': u'2015-03-09 11:34:14+00:00'},
+    #  u'2efbe7294727': {u'author': u'marcus',
+    #                    u'branch': u'master',
+    #                    u'files': [{u'file': u'foo', u'type': u'modified'}],
+    #                    u'message': u'3rd commit; pushing this and the first 2\n',
+    #                    u'node': u'2efbe7294727',
+    #                    u'parents': [u'2ebca08692b4'],
+    #                    u'raw_author': u'Marcus Bertrand <marcus@somedomain.com>',
+    #                    u'raw_node': u'2efbe7294727a8db7a1fd1e54b14fe5a267e1175',
+    #                    u'revision': None,
+    #                    u'size': -1,
+    #                    u'timestamp': u'2015-03-09 12:34:31',
+    #                    u'utctimestamp': u'2015-03-09 11:34:31+00:00'}}
+
+    def set_branch(node, branch_name):
+        if not node in commit_map or commit_map[node]['branch']:
+            return
+        
+        commit_map[node]['branch'] = branch_name
+        
+        for parent_node in commit_map[node]['parents']:
+            set_branch(parent_node, branch_name)
+    
+    ## walk commits with a branch
+    for tip in [ c for c in commit_map.values() if c['branch'] ]:
+        branch_name = tip['branch']
+        
+        for parent_node in tip['parents']:
+            set_branch(parent_node, branch_name)
+    
+    return [ commit_map[c] for c in commit_order ]
 
 def getChanges(request, options=None):
     """Catch a POST request from BitBucket and start a build process
@@ -52,7 +116,7 @@ def getChanges(request, options=None):
         clone_url = repo_url
     
     changes = []
-    for commit in payload['commits']:
+    for commit in populateBranches(payload['commits']):
         changes.append({
             'author': commit['raw_author'],
             'files': [f['file'] for f in commit['files']],
