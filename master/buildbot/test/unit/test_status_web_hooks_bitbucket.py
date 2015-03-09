@@ -160,7 +160,7 @@ class TestChangeHookConfiguredWithBitbucketChange(unittest.TestCase):
 
         self.assertEqual(commit['files'], ['somefile.py'])
         self.assertEqual(
-            commit['repository'], 'https://bitbucket.org/marcus/project-x/')
+            commit['repository'], 'git@bitbucket.org:marcus/project-x.git')
         self.assertEqual(
             calendar.timegm(commit['when_timestamp'].utctimetuple()),
             1338350336

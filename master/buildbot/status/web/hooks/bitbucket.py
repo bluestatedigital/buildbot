@@ -39,7 +39,18 @@ def getChanges(request, options=None):
     repo_url = '%s%s' % (
         payload['canon_url'], payload['repository']['absolute_url'])
     project = request.args.get('project', [''])[0]
-
+    
+    ## https://confluence.atlassian.com/display/BITBUCKET/Clone+a+repository
+    scm = payload['repository']['scm'] # git, hg
+    
+    ## repo url should match that of the associated step for use with a change
+    ## filter.  The repo_url appears to be appropriate for an public hg repo,
+    ## but won't work with a private git repo.
+    if scm == "git":
+        clone_url = 'git@bitbucket.org:%s.git' % payload['repository']['absolute_url'][1:-1]
+    elif scm == "hg":
+        clone_url = repo_url
+    
     changes = []
     for commit in payload['commits']:
         changes.append({
@@ -50,10 +61,10 @@ def getChanges(request, options=None):
             'when_timestamp': dateparse(commit['utctimestamp']),
             'branch': commit['branch'],
             'revlink': '%scommits/%s' % (repo_url, commit['raw_node']),
-            'repository': repo_url,
+            'repository': clone_url,
             'project': project
         })
         log.msg('New revision: %s' % (commit['node'],))
 
     log.msg('Received %s changes from bitbucket' % (len(changes),))
-    return (changes, payload['repository']['scm'])
+    return (changes, scm)
