@@ -195,9 +195,14 @@ else:
     # dependencies
     setup_args['install_requires'] = []
 
-    if sys.version_info[:2] >= (2, 6):
+    if sys.version_info[:2] >= (2, 7):
         setup_args['install_requires'] += [
-            'twisted >= 11.0.0',
+            'twisted > 15.1.0',
+            'Jinja2 >= 2.1',
+        ]
+    elif sys.version_info[:2] == (2, 6):
+        setup_args['install_requires'] += [
+            'twisted >= 11.0.0, <= 15.1.0',
             'Jinja2 >= 2.1',
         ]
     else:
